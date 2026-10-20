@@ -1,16 +1,22 @@
 from __future__ import annotations
 from types import MappingProxyType
-from typing import Any, Callable, ClassVar, List, Self, _get_type_hints_obj_allowed_types, final
+from typing import Any, Callable, ClassVar, List, Self, final
 
 from pygame.event import Event
 
 from pug.dimension import Dim2
-from pug.events import REQUESTSIZE
+from pug.events import HIT, HITSCAN, REQUESTSIZE
 
 import pygame
+from pygame import Vector2
+
+EventMethod = (
+    Callable[[Any, pygame.event.Event], Any]
+    |Callable[[Any], Any]  
+)
 
 def on(*events: int, legate = True):
-  def decorator(func: Callable[[Any, pygame.event.Event], Any]):
+  def decorator(func: EventMethod):
     setattr(func, "__pygameevents__", events)
     setattr(func, "__legateevents__", legate)
     return func
@@ -24,10 +30,7 @@ decorator.
 class Node:
   # A read only dictionary that routes methods.
   class_events: ClassVar[
-      MappingProxyType[
-        int,
-        Callable[[Self, pygame.event.Event], None]
-      ]
+      MappingProxyType[ int, EventMethod ]
   ]
 
   def __init_subclass__(cls) -> None:
@@ -134,6 +137,23 @@ class Node:
     if reverse: emit_self()
 
 
+  # @on(HITSCAN)
+  # def hitscan(self, event) -> Node:
+  #   point: Vector2 = event.point_v2
+  #   if point is None: return self
+  #   for child in self._children:
+  #     if child.emit(Event(HIT), bubble=False):
+  #       return child
+  #   return self
+  #
+  # @on(HIT)
+  # def hit(self, event):
+  #   # Always hit a non-visual node.
+  #   return True
+
+
+
+
 '''
 UiNode derives from Node, but implements rendering events
 and hit management.
@@ -152,9 +172,18 @@ class UiNode(Node):
         self.position = pos
 
     @on(REQUESTSIZE)
-    def get_node_size(self, e):
+    def get_size(self):
       if self.parent is None: 
         return self.size.offset
       return self.size.absolute(self.parent.emit(Event(REQUESTSIZE)))
+
+    @on(HIT)
+    def _e_hit(self, event) -> bool:
+      point: Vector2 = event.point_v2
+      if point is None: return False
+      return (
+        self.emit(Event(REQUESTSIZE))
+      )
+
 
 
