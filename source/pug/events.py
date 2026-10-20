@@ -7,5 +7,7 @@ def new_event_index() -> int:
   custom_index += 1
   return event_index
 
+HIT = new_event_index()
+HITSCAN = new_event_index()
 RENDER = new_event_index()
-GETNODESIZE = new_event_index()
+REQUESTSIZE = new_event_index()

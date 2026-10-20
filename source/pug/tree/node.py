@@ -2,8 +2,10 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Any, Callable, ClassVar, List, Self, _get_type_hints_obj_allowed_types, final
 
+from pygame.event import Event
+
 from pug.dimension import Dim2
-from pug.events import GETNODESIZE
+from pug.events import REQUESTSIZE
 
 import pygame
 
@@ -105,25 +107,22 @@ class Node:
   # NotImplemented error. Bubble means that the signal should go to the
   # closest parenting node that implements said event. If
   # event raises exception, forwards exception.
-  def emit(self, event: int, *args, bubble=False, **kwargs) -> Any:
-    if not self.implements(event):
+  def emit(self, event: Event, *args, bubble=False, **kwargs) -> Any:
+    if not self.implements(event.type):
       if not bubble: raise NotImplementedError("Method is not implemented.")
       if self.parent is not None:
-        self.parent.emit(event, *args, bubble=True, **kwargs)
+        return self.parent.emit(event, *args, bubble=True, **kwargs)
       return
 
-    try: 
-      return self.class_events[event](self, *args, **kwargs)
-    except Exception as e:
-        raise e
+    return self.class_events[event.type](self, event, *args, **kwargs)
   
   @final
   # Broadcast a event to this node and all it's children.
   # The node with the highest z-index gets the signal last
   # (if function not reversed).
-  def broadcast(self, event: int, *args, reverse=False, **kwargs):
+  def broadcast(self, event: Event, *args, reverse=False, **kwargs):
     def emit_self():
-      if not self.implements(event): return
+      if not self.implements(event.type): return
       try: self.emit(event, *args, bubble=False, **kwargs)
       except Exception as e: 
         print(f"Failed to execute signal {event} for object {self}.")
@@ -152,8 +151,10 @@ class UiNode(Node):
         self.size = size
         self.position = pos
 
-    @on(GETNODESIZE)
-    def __get_node_size(self, e):
-      return self.size.absolute()
+    @on(REQUESTSIZE)
+    def get_node_size(self, e):
+      if self.parent is None: 
+        return self.size.offset
+      return self.size.absolute(self.parent.emit(Event(REQUESTSIZE)))
 
 

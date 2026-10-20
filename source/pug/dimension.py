@@ -4,7 +4,7 @@ import pygame
 from pygame import Vector2
 
 from pug.tree.node import Node
-from pug.events import GETNODESIZE
+from pug.events import REQUESTSIZE
 
 @dataclass(frozen=False)
 class Dim2():
@@ -15,5 +15,7 @@ class Dim2():
     if self.scale is None or self.scale.magnitude() == 0:
       return self.offset
 
-    sl = area * self.scale
-    return  + self.offset
+    return Vector2(
+        self.scale.x*area.x,
+        self.scale.y*area.y
+    ) + self.offset

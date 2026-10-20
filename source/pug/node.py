@@ -2,12 +2,16 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Any, Callable, ClassVar, List, Self, _get_type_hints_obj_allowed_types, final
 
-from events import GETNODESIZE
+from pygame.event import Event
+
+from pug.dimension import Dim2
+from pug.events import HIT, HITSCAN, REQUESTSIZE
 
 import pygame
+from pygame import Vector2
 
 def on(*events: int, legate = True):
-  def decorator(func: Callable[[Any, pygame.event.Event], None]):
+  def decorator(func: Callable[[Any, pygame.event.Event], Any]):
     setattr(func, "__pygameevents__", events)
     setattr(func, "__legateevents__", legate)
     return func
@@ -23,7 +27,7 @@ class Node:
   class_events: ClassVar[
       MappingProxyType[
         int,
-        Callable[[Self, pygame.event.Event], None]
+        Callable[[Self, pygame.event.Event], Any]
       ]
   ]
 
@@ -143,17 +147,33 @@ class UiNode(Node):
         id: str | None = None,
         parent: Node | None = None,
         zindex: int = 0,
-        size = Dim2
-        pos  = pygame.Vector2()
+        size = Dim2(),
+        pos  = Dim2()
     ):
         super().__init__(id, parent, zindex)
 
         self.size = size
         self.position = pos
 
-    @on(GETNODESIZE)
-    def __get_node_size(self, event):
-      return self.
-       
+    @on(HITSCAN)
+    def hitscan(self, event) -> Node:
+      point: Vector2 = event.point_v2
+      if point is None: return self
+      for child in self._children:
+        return child.emit(event,bubble=False)
+
+    @on(HIT)
+    def hit(self, event) -> bool:
+      point: Vector2 = event.point_v2
+      if point is None: return False
+      return (
+        self.emit(Event(REQUESTSIZE))
+      )
 
 
+    @on(REQUESTSIZE)
+    def get_node_size(self, event):
+      if self.parent is None: return self.size.offset
+      return self.size.absolute(
+          self.parent.emit(REQUESTSIZE,bubble=True)
+      )
